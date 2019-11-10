@@ -1,0 +1,802 @@
+<html lang="en">
+    <head>
+        <!-- Required meta tags -->
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+ 
+        <title>Job Vacancy API Authentication</title>
+ 
+        <!-- Bootstrap 4 CSS and custom CSS -->
+		<link rel="stylesheet" type="text/css" href="bootstrap.min.css"" />
+		<link rel="stylesheet" type="text/css" href="custom.css" />
+ 
+    </head>
+<body>
+ 
+<!-- navbar -->
+<nav class="navbar navbar-expand-md navbar-dark bg-dark fixed-top">
+    <a class="navbar-brand" href="#">Twitter Job Vacancy API</a>
+    <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNavAltMarkup" aria-controls="navbarNavAltMarkup" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="navbarNavAltMarkup">
+        <div class="navbar-nav">
+            <a class="nav-item nav-link" href="#" id='home'>Home</a>
+            <a class="nav-item nav-link" href="#" id='update_account'>Account</a>
+            <a class="nav-item nav-link" href="#" id='logout'>Logout</a>
+            <a class="nav-item nav-link" href="#" id='login'>Login</a>
+            <a class="nav-item nav-link" href="#" id='sign_up'>Sign Up</a>
+        </div>
+    </div>
+</nav>
+<!-- /navbar -->
+ 
+<!-- container -->
+<main role="main" class="container starter-template">
+ 
+    <div class="row">
+        <div class="col">
+ 
+            <!-- where prompt / messages will appear -->
+            <div id="response"></div>
+ 
+            <!-- where main content will appear -->
+            <div id="content">
+						
+			</div>
+        </div>
+    </div>
+ 
+</main>
+<!-- /container -->
+ 
+<!-- jQuery & Bootstrap 4 JavaScript libraries -->
+<script src="https://code.jquery.com/jquery-3.2.1.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
+ 
+<script>
+// jQuery codes
+$(document).ready(function(){
+    // show sign up / registration form
+    var jwt = getCookie('jwt');
+	$.post("api/validate_token.php", JSON.stringify({ jwt:jwt })).done(function(result) {
+	
+		var html = getHome();
+		 
+		$('#content').html(html);
+		showLoggedInMenu();
+	})
+ 
+	// on error/fail, tell the user he needs to login to show the account page
+	.fail(function(result){
+		showLoginPage();
+		var html = getHome();
+	 
+		$('#content').html(html);
+	});
+	
+	$(document).on('click', '#sign_up', function(){ 
+        var html = `
+            <h2>Sign Up</h2>
+            <form id='sign_up_form'>
+                <div class="form-group">
+                    <label for="firstname">Firstname</label>
+                    <input type="text" class="form-control" name="firstname" id="firstname" required />
+                </div>
+ 
+                <div class="form-group">
+                    <label for="lastname">Lastname</label>
+                    <input type="text" class="form-control" name="lastname" id="lastname" required />
+                </div>
+ 
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <input type="email" class="form-control" name="email" id="email" required />
+                </div>
+ 
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" class="form-control" name="password" id="password" required />
+                </div>
+ 
+                <button type='submit' class='btn btn-primary'>Sign Up</button>
+            </form>
+            `;
+ 
+        clearResponse();
+        $('#content').html(html);
+    });
+ 
+    // trigger when registration form is submitted
+	$(document).on('submit', '#sign_up_form', function(){
+	 
+		// get form data
+		var sign_up_form=$(this);
+		var form_data=JSON.stringify(sign_up_form.serializeObject());
+	 
+		// submit form data to api
+		$.ajax({
+			url: "api/create_client.php",
+			type : "POST",
+			contentType : 'application/json',
+			data : form_data,
+			success : function(result) {
+				// if response is a success, tell the user it was a successful sign up & empty the input boxes				
+				if(result['token']==0) $('#response').html("<div class='alert alert-danger'>Unable to sign up. "+result['message']+"</div>");
+				else $('#response').html("<div class='alert alert-success'>Successful sign up. Please Login. Your Token is : "+result['token']+"</div>");
+				
+				sign_up_form.find('input').val('');
+			},
+			error: function(result){
+				// on error, tell the user sign up failed
+				$('#response').html("<div class='alert alert-danger'>Unable to sign up. Please contact admin.</div>");
+			}
+		});
+	 
+		return false;
+	});
+ 
+    // show login form
+	$(document).on('click', '#login', function(){
+		showLoginPage();
+	});
+	
+	// show login page
+	function showLoginPage(){
+	 
+		// remove jwt
+		setCookie("jwt", "", 1);
+	 
+		// login page html
+		var html = `
+			<h2>Login</h2>
+			<form id='login_form'>
+				<div class='form-group'>
+					<label for='email'>Email address</label>
+					<input type='email' class='form-control' id='email' name='email' placeholder='Enter email'>
+				</div>
+	 
+				<div class='form-group'>
+					<label for='password'>Password</label>
+					<input type='password' class='form-control' id='password' name='password' placeholder='Password'>
+				</div>
+	 
+				<button type='submit' class='btn btn-primary'>Login</button>
+			</form>
+			`;
+	 
+		$('#content').html(html);
+		clearResponse();
+		showLoggedOutMenu();
+	}
+	 
+	// function to set cookie
+	function setCookie(cname, cvalue, exdays) {
+		var d = new Date();
+		d.setTime(d.getTime() + (exdays*24*60*60*1000));
+		var expires = "expires="+ d.toUTCString();
+		document.cookie = cname + "=" + cvalue + ";" + expires + ";path=/";
+	}
+	 
+	// if the user is logged out
+	function showLoggedOutMenu(){
+		// show login and sign up from navbar & hide logout button
+		$("#login, #sign_up").show();
+		$("#logout").hide();
+	}
+	
+	function getHome(){
+		var html = `
+			<!doctype html>
+			<html>
+			  <head>
+				<title>Twitter Job Vacancy</title>
+				<style type="text/css">
+				  body {
+					font-family: Trebuchet MS, sans-serif;
+					font-size: 15px;
+					color: #444;
+					margin-right: 24px;
+				  }
+				  
+				  h1	{
+					font-size: 25px;
+				  }
+				  h2	{
+					font-size: 20px;
+				  }
+				  h3	{
+					font-size: 16px;
+					font-weight: bold;
+				  }
+				  hr	{
+					height: 1px;
+					border: 0;
+					color: #ddd;
+					background-color: #ddd;
+				  }
+				  
+				  .app-desc {
+					clear: both;
+					margin-left: 20px;
+				  }
+				  .param-name {
+					width: 100%;
+				  }
+				  .license-info {
+					margin-left: 20px;
+				  }
+				  
+				  .license-url {
+					margin-left: 20px;
+				  }
+				  
+				  .model {
+					margin: 0 0 0px 20px;
+				  }
+				  
+				  .method {
+					margin-left: 20px;
+				  }
+				  
+				  .method-notes	{
+					margin: 10px 0 20px 0;
+					font-size: 90%;
+					color: #555;
+				  }
+				  
+				  pre {
+					padding: 10px;
+					margin-bottom: 2px;
+				  }
+				  
+				  .http-method {
+				   text-transform: uppercase;
+				  }
+				  
+				  pre.get {
+					background-color: #0f6ab4;
+				  }
+				  
+				  pre.post {
+					background-color: #10a54a;
+				  }
+				  
+				  pre.put {
+					background-color: #c5862b;
+				  }
+				  
+				  pre.delete {
+					background-color: #a41e22;
+				  }
+				  
+				  .huge	{
+					color: #fff;
+				  }
+				  
+				  pre.example {
+					background-color: #f3f3f3;
+					padding: 10px;
+					border: 1px solid #ddd;
+				  }
+				  
+				  code {
+					white-space: pre;
+				  }
+				  
+				  .nickname {
+					font-weight: bold;
+				  }
+				  
+				  .method-path {
+					font-size: 1.5em;
+					background-color: #0f6ab4;
+				  }
+				  
+				  .up {
+					float:right;
+				  }
+				  
+				  .parameter {
+					width: 500px;
+				  }
+				  
+				  .param {
+					width: 500px;
+					padding: 10px 0 0 20px;
+					font-weight: bold;
+				  }
+				  
+				  .param-desc {
+					width: 700px;
+					padding: 0 0 0 20px;
+					color: #777;
+				  }
+				  
+				  .param-type {
+					font-style: italic;
+				  }
+				  
+				  .param-enum-header {
+				  width: 700px;
+				  padding: 0 0 0 60px;
+				  color: #777;
+				  font-weight: bold;
+				  }
+				  
+				  .param-enum {
+				  width: 700px;
+				  padding: 0 0 0 80px;
+				  color: #777;
+				  font-style: italic;
+				  }
+				  
+				  .field-label {
+					padding: 0;
+					margin: 0;
+					clear: both;
+				  }
+				  
+				  .field-items	{
+					padding: 0 0 15px 0;
+					margin-bottom: 15px;
+				  }
+				  
+				  .return-type {
+					clear: both;
+					padding-bottom: 10px;
+				  }
+				  
+				  .param-header {
+					font-weight: bold;
+				  }
+				  
+				  .method-tags {
+					text-align: right;
+				  }
+				  
+				  .method-tag {
+					background: none repeat scroll 0% 0% #24A600;
+					border-radius: 3px;
+					padding: 2px 10px;
+					margin: 2px;
+					color: #FFF;
+					display: inline-block;
+					text-decoration: none;
+				  }
+				</style>
+			  </head>
+			  <body>
+			  <b style="font-size:40px">Twitter Job Vacancy</b>
+				<div class="app-desc">This is a Twitter Job Vacancy Server. To use this API, you need a token api key. Please Sign Up to get a token api key.</div>
+				<div class="app-desc">Contact Info: <a href="ery.coolkid@gmail.com">ery.coolkid@gmail.com</a></div>
+				<div class="app-desc">Version: 1.0.0-oas3</div>
+				<div class="app-desc">BasePath: https://twitterjobvacancy.online/api</div>
+			  <hr/>
+			  <h1><a name="Register">Register</a></h1>
+			  <div class="method"><a name="registerPost"></a>
+				<div class="method-path">
+				<pre class="post"><code class="huge"><span class="http-method">post</span> /register</code></pre></div>
+				<div class="method-summary">Register to get Token for accessing API</div>
+				<div class="method-notes"></div>
+
+				<h3 class="field-label">Path parameters</h3>
+				<div class="field-items">
+				  <div class="param">firstname (required)</div>
+				  
+						<div class="param-desc"><span class="param-type">Path Parameter</span> &mdash; user first name </div>      <div class="param">lastname (required)</div>
+				  
+						<div class="param-desc"><span class="param-type">Path Parameter</span> &mdash; user last name </div>      <div class="param">email (required)</div>
+				  
+						<div class="param-desc"><span class="param-type">Path Parameter</span> &mdash; user email </div>      <div class="param">password (required)</div>
+				  
+						<div class="param-desc"><span class="param-type">Path Parameter</span> &mdash; user password </div>    </div>  <!-- field-items -->
+
+				<!--Todo: process Response Object and its headers, schema, examples -->
+
+				<h3 class="field-label">Responses</h3>
+				<h4 class="field-label">200</h4>
+				Successful operation
+					<a href="#"></a>
+				<h4 class="field-label">400</h4>
+				Unable to Create Client.
+					<a href="#"></a>
+			  </div> <!-- method -->
+			  <hr/>
+			  
+			  <h1><a name="Job">Job</a></h1>
+			  <div class="method"><a name="jobReadGet"></a>
+				<div class="method-path">
+				<pre class="get"><code class="huge"><span class="http-method">get</span> /job/read</code></pre></div>
+				<div class="method-summary">Get all list of job vacancy in Twitter</div>
+				<div class="method-notes"></div>
+
+				<h3 class="field-label">Path parameters</h3>
+				<div class="field-items">
+				  <div class="param">token (required)</div>
+				  
+						<div class="param-desc"><span class="param-type">Path Parameter</span> &mdash; your api key </div>    </div>  <!-- field-items -->
+
+				<!--Todo: process Response Object and its headers, schema, examples -->
+
+				<h3 class="field-label">Responses</h3>
+				<h4 class="field-label">200</h4>
+				Successful operation
+					<a href="#"></a>
+				<h4 class="field-label">401</h4>
+				Access Denied.
+					<a href="#"></a>
+				<h4 class="field-label">404</h4>
+				No jobs found
+					<a href="#"></a>
+			  </div> <!-- method -->
+			  <hr/>
+			  <div class="method"><a name="jobReadOneGet"></a>
+				<div class="method-path">
+				<pre class="get"><code class="huge"><span class="http-method">get</span> /job/read_one</code></pre></div>
+				<div class="method-summary">Read one Job Vacancy By ID</div>
+				<div class="method-notes"></div>
+
+				<h3 class="field-label">Path parameters</h3>
+				<div class="field-items">
+				  <div class="param">s (required)</div>
+				  
+						<div class="param-desc"><span class="param-type">Path Parameter</span> &mdash; keyword that will be searched in job vacancy </div>      <div class="param">token (required)</div>
+				  
+						<div class="param-desc"><span class="param-type">Path Parameter</span> &mdash; your api key </div>    </div>  <!-- field-items -->
+
+				<!--Todo: process Response Object and its headers, schema, examples -->
+
+				<h3 class="field-label">Responses</h3>
+				<h4 class="field-label">200</h4>
+				Successful operation
+					<a href="#"></a>
+				<h4 class="field-label">401</h4>
+				Access Denied.
+					<a href="#"></a>
+				<h4 class="field-label">404</h4>
+				No jobs found
+					<a href="#"></a>
+			  </div> <!-- method -->
+			  <hr/>
+			  <div class="method"><a name="jobSearchGet"></a>
+				<div class="method-path">
+				<pre class="get"><code class="huge"><span class="http-method">get</span> /job/search</code></pre></div>
+				<div class="method-summary">Search Job Vacancy with Keyword</div>
+				<div class="method-notes"></div>
+
+				<h3 class="field-label">Path parameters</h3>
+				<div class="field-items">
+				  <div class="param">s (required)</div>
+				  
+						<div class="param-desc"><span class="param-type">Path Parameter</span> &mdash; keyword that will be searched in job vacancy </div>      <div class="param">token (required)</div>
+				  
+						<div class="param-desc"><span class="param-type">Path Parameter</span> &mdash; your api key </div>    </div>  <!-- field-items -->
+
+				<!--Todo: process Response Object and its headers, schema, examples -->
+
+				<h3 class="field-label">Responses</h3>
+				<h4 class="field-label">200</h4>
+				Successful operation
+					<a href="#"></a>
+				<h4 class="field-label">401</h4>
+				Access Denied.
+					<a href="#"></a>
+				<h4 class="field-label">404</h4>
+				No jobs found
+					<a href="#"></a>
+			  </div> <!-- method -->
+			  <hr/>			  
+			  <h1><a name="User">User</a></h1>
+			  <div class="method"><a name="userReadGet"></a>
+				<div class="method-path">
+				<pre class="get"><code class="huge"><span class="http-method">get</span> /user/read</code></pre></div>
+				<div class="method-summary">Get all list of user who tweet about job vacancy in Twitter</div>
+				<div class="method-notes"></div>
+
+				<h3 class="field-label">Path parameters</h3>
+				<div class="field-items">
+				  <div class="param">token (required)</div>
+				  
+						<div class="param-desc"><span class="param-type">Path Parameter</span> &mdash; your api key </div>    </div>  <!-- field-items -->
+
+				<!--Todo: process Response Object and its headers, schema, examples -->
+
+				<h3 class="field-label">Responses</h3>
+				<h4 class="field-label">200</h4>
+				Successful operation
+					<a href="#"></a>
+				<h4 class="field-label">401</h4>
+				Access Denied.
+					<a href="#"></a>
+				<h4 class="field-label">404</h4>
+				No users found
+					<a href="#"></a>
+			  </div> <!-- method -->
+			  <hr/>
+			  <div class="method"><a name="userReadOneGet"></a>
+				<div class="method-path">
+				<pre class="get"><code class="huge"><span class="http-method">get</span> /user/read_one</code></pre></div>
+				<div class="method-summary">Read one user who tweet about Job Vacancy By ID</div>
+				<div class="method-notes"></div>
+
+				<h3 class="field-label">Path parameters</h3>
+				<div class="field-items">
+				  <div class="param">s (required)</div>
+				  
+						<div class="param-desc"><span class="param-type">Path Parameter</span> &mdash; keyword that will be searched in job vacancy </div>      <div class="param">token (required)</div>
+				  
+						<div class="param-desc"><span class="param-type">Path Parameter</span> &mdash; your api key </div>    </div>  <!-- field-items -->
+
+				<!--Todo: process Response Object and its headers, schema, examples -->
+
+				<h3 class="field-label">Responses</h3>
+				<h4 class="field-label">200</h4>
+				Successful operation
+					<a href="#"></a>
+				<h4 class="field-label">401</h4>
+				Access Denied.
+					<a href="#"></a>
+				<h4 class="field-label">404</h4>
+				No users found
+					<a href="#"></a>
+			  </div> <!-- method -->
+			  <hr/>
+			  <div class="method"><a name="userSearchGet"></a>
+				<div class="method-path">
+				<pre class="get"><code class="huge"><span class="http-method">get</span> /user/search</code></pre></div>
+				<div class="method-summary">Search user that tweet about Job Vacancy with Keyword</div>
+				<div class="method-notes"></div>
+
+				<h3 class="field-label">Path parameters</h3>
+				<div class="field-items">
+				  <div class="param">s (required)</div>
+				  
+						<div class="param-desc"><span class="param-type">Path Parameter</span> &mdash; keyword that will be searched in job vacancy </div>      <div class="param">token (required)</div>
+				  
+						<div class="param-desc"><span class="param-type">Path Parameter</span> &mdash; your api key </div>    </div>  <!-- field-items -->
+
+				<!--Todo: process Response Object and its headers, schema, examples -->
+
+				<h3 class="field-label">Responses</h3>
+				<h4 class="field-label">200</h4>
+				Successful operation
+					<a href="#"></a>
+				<h4 class="field-label">401</h4>
+				Access Denied.
+					<a href="#"></a>
+				<h4 class="field-label">404</h4>
+				No users found
+					<a href="#"></a>
+			  </div> <!-- method -->
+			  <hr/>			  
+			  </body>
+			</html>
+		`;
+		return html;
+	}
+	 
+	// show home page
+	function showHomePage(){
+	 	// validate jwt to verify access
+		var jwt = getCookie('jwt');
+		$.post("api/validate_token.php", JSON.stringify({ jwt:jwt })).done(function(result) {
+		
+			var html = getHome();
+			 
+			$('#content').html(html);
+			showLoggedInMenu();
+		})
+	 
+		// on error/fail, tell the user he needs to login to show the account page
+		.fail(function(result){
+			showLoginPage();
+			var html = getHome();
+		 
+			$('#content').html(html);
+		});
+	}
+	 
+	// get or read cookie
+	function getCookie(cname){
+		var name = cname + "=";
+		var decodedCookie = decodeURIComponent(document.cookie);
+		var ca = decodedCookie.split(';');
+		for(var i = 0; i <ca.length; i++) {
+			var c = ca[i];
+			while (c.charAt(0) == ' '){
+				c = c.substring(1);
+			}
+	 
+			if (c.indexOf(name) == 0) {
+				return c.substring(name.length, c.length);
+			}
+		}
+		return "";
+	}
+	 
+	// if the user is logged in
+	function showLoggedInMenu(){
+		// hide login and sign up from navbar & show logout button
+		$("#login, #sign_up").hide();
+		$("#logout").show();
+	}
+	 
+	function showUpdateAccountForm(){
+		// validate jwt to verify access
+		var jwt = getCookie('jwt');
+		$.post("api/validate_token.php", JSON.stringify({ jwt:jwt })).done(function(result) {
+	 
+			// if response is valid, put user details in the form
+			var html = `
+					<h2>Update Account</h2>
+					<form id='update_account_form'>
+						<div class="form-group">
+							<label for="firstname">Firstname</label>
+							<input type="text" class="form-control" name="firstname" id="firstname" required value="` + result.data.firstname + `" />
+						</div>
+			 
+						<div class="form-group">
+							<label for="lastname">Lastname</label>
+							<input type="text" class="form-control" name="lastname" id="lastname" required value="` + result.data.lastname + `" />
+						</div>
+						
+						<div class="form-group">
+							<label for="token">Token</label>
+							<input type="token" class="form-control" name="token" id="token" required value="` + result.data.token + `" disabled />
+						</div>
+			 
+						<div class="form-group">
+							<label for="email">Email</label>
+							<input type="email" class="form-control" name="email" id="email" required value="` + result.data.email + `" />
+						</div>
+			 
+						<div class="form-group">
+							<label for="password">Password</label>
+							<input type="password" class="form-control" name="password" id="password" />
+						</div>
+			 
+						<button type='submit' class='btn btn-primary'>
+							Save Changes
+						</button>
+					</form>
+				`;
+			 
+			clearResponse();
+			$('#content').html(html);
+		})
+	 
+		// on error/fail, tell the user he needs to login to show the account page
+		.fail(function(result){
+			showLoginPage();
+			$('#response').html("<div class='alert alert-danger'>Please login to access the account page.</div>");
+		});
+	}
+ 
+    // remove any prompt messages
+	function clearResponse(){
+		$('#response').html('');
+	}
+	 
+	// trigger when login form is submitted
+	$(document).on('submit', '#login_form', function(){
+	 
+		// get form data
+		var login_form=$(this);
+		var form_data=JSON.stringify(login_form.serializeObject());
+	 
+		// submit form data to api
+		$.ajax({
+			url: "api/login.php",
+			type : "POST",
+			contentType : 'application/json',
+			data : form_data,
+			success : function(result){
+		 
+				// store jwt to cookie
+				setCookie("jwt", result.jwt, 1);
+		 
+				// show home page & tell the user it was a successful login
+				showHomePage();
+				$('#response').html("<div class='alert alert-success'>Successful login.</div>");
+		 
+			},
+			error: function(xhr, resp, text){
+				// on error, tell the user login has failed & empty the input boxes
+				$('#response').html("<div class='alert alert-danger'>Login failed. Email or password is incorrect.</div>");
+				login_form.find('input').val('');
+			}
+		});
+	 
+		return false;
+	});
+	 
+	// show home page
+	$(document).on('click', '#home', function(){
+		showHomePage();
+		clearResponse();
+	});
+	 
+	// show update account form
+	$(document).on('click', '#update_account', function(){
+		showUpdateAccountForm();
+	});
+	 
+	// trigger when 'update account' form is submitted
+	$(document).on('submit', '#update_account_form', function(){
+	 
+		// handle for update_account_form
+		var update_account_form=$(this);
+	 
+		// validate jwt to verify access
+		var jwt = getCookie('jwt');
+	 
+		// get form data
+		var update_account_form_obj = update_account_form.serializeObject()
+		 
+		// add jwt on the object
+		update_account_form_obj.jwt = jwt;
+		 
+		// convert object to json string
+		var form_data=JSON.stringify(update_account_form_obj);
+		 
+		// submit form data to api
+		$.ajax({
+			url: "api/update_client.php",
+			type : "POST",
+			contentType : 'application/json',
+			data : form_data,
+			success : function(result) {
+		 
+				// tell the user account was updated
+				$('#response').html("<div class='alert alert-success'>Account was updated.</div>");
+		 
+				// store new jwt to coookie
+				setCookie("jwt", result.jwt, 1);
+			},
+		 
+			// show error message to user
+			error: function(xhr, resp, text){
+				if(xhr.responseJSON.message=="Unable to update user."){
+					$('#response').html("<div class='alert alert-danger'>Unable to update account.</div>");
+				}
+			 
+				else if(xhr.responseJSON.message=="Access denied."){
+					showLoginPage();
+					$('#response').html("<div class='alert alert-success'>Access denied. Please login</div>");
+				}
+			}
+		});
+	 
+		return false;
+	});
+	 
+	// logout the user
+	$(document).on('click', '#logout', function(){
+		showLoginPage();
+		$('#response').html("<div class='alert alert-info'>You are logged out.</div>");
+	});
+	 
+	// function to make form values to json format
+	$.fn.serializeObject = function(){
+	 
+		var o = {};
+		var a = this.serializeArray();
+		$.each(a, function() {
+			if (o[this.name] !== undefined) {
+				if (!o[this.name].push) {
+					o[this.name] = [o[this.name]];
+				}
+				o[this.name].push(this.value || '');
+			} else {
+				o[this.name] = this.value || '';
+			}
+		});
+		return o;
+	};
+});
+</script>
+ 
+</body>
+</html>

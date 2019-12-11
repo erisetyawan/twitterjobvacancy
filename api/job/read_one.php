@@ -32,12 +32,58 @@ if($token_exists){
 	$job->readOne();
 	 
 	if($job->name!=null){
+		$text = html_entity_decode($job->text);
+		
+		$pos = strrpos($text, "https://t.co/");
+		$i = $pos;
+
+		while(true){
+			if($i==strlen($text)) break;
+			$char = substr($text,$i,1);
+			if ( ctype_space($char) ) break;
+			$i++;
+		}
+		$link = substr($text,$pos,$i);
+		$temp = explode("#",$link);
+		$link = $temp[0];
+		$temp = explode(" ",$link);
+		$link = $temp[0];
+		
+		/////////////////////////////////////////
+
+		$pos2 = strpos($text, "https://t.co/");
+		$i2 = $pos2;
+
+		while(true){
+			if($i2==strlen($text)) break;
+			$char = substr($text,$i2,1);
+			if ( ctype_space($char) ) break;
+			$i2++;
+		}
+		$link2 = substr($text,$pos2,$i2);
+		$temp = explode("#",$link2);
+		$link2 = $temp[0];
+		$temp = explode(" ",$link2);
+		$link2 = $temp[0];
+		
+		/////////////////////////////////////////
+
+		if($link == $link2)$link2 = "";
+		if($i!=strlen($text))$link2 = $link;
+
+		$text = str_replace($link,"",$text);
+		$text = str_replace($link2,"",$text);
+		
+		$link = "https://twitter.com/i/web/status/".$job->id;
+		
 		// create array
 		$job_arr = array(
 			"id" =>  $job->id,
 			"name" => $job->name,
 			"location" => $job->location,
-			"text" => html_entity_decode($job->text),
+			"text" => html_entity_decode($text),
+			"link_twitter" =>  $link,
+			"other_link" => $link2,
 		);
 	 
 		// set response code - 200 OK
